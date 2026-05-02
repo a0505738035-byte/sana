@@ -6,9 +6,9 @@
     <title>מערכת דיווח פעילות - SANA</title>
     
     <!-- ייבוא ספריות חיצוניות -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
@@ -81,12 +81,12 @@
         th { background: #f8fafc; padding: 15px; border-bottom: 2px solid var(--border-color); font-weight: 800; color: #475569; }
         td { padding: 15px; border-bottom: 1px solid var(--border-color); }
 
-        /* כפתורים */
         .btn-small { padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
         .btn-csv { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .btn-pdf { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .submit-btn { background: var(--primary-blue); color: white; padding: 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; font-size: 1.1rem; }
         .submit-btn:hover { background: var(--dark-blue); }
+        .submit-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
         .action-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
 
@@ -100,7 +100,6 @@
             border-radius: 15px; align-items: end;
         }
 
-        /* מודל */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 3000;
@@ -120,7 +119,6 @@
 </head>
 <body>
 
-<!-- מסך הזדהות -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
         <h2 style="color: var(--dark-blue); font-size: 2.2rem; margin-bottom: 5px;">SANA</h2>
@@ -131,7 +129,6 @@
     </div>
 </div>
 
-<!-- מודל רשימת נוכחים -->
 <div id="attendanceModal" class="modal">
     <div class="modal-content">
         <h3 id="modalTitle" style="margin-top:0; color: var(--dark-blue);">👥 רשימת משתתפים</h3>
@@ -141,7 +138,6 @@
     </div>
 </div>
 
-<!-- תוכן האפליקציה -->
 <div id="appContent" style="display: none;">
     <div class="container">
         <div class="header" id="mainHeader">
@@ -155,7 +151,6 @@
             <button class="nav-btn" onclick="logout()" style="color: var(--accent-red); margin-right: auto;">🚪 יציאה</button>
         </div>
 
-        <!-- תצוגת מדריך (אישית) -->
         <div id="personalView" class="view-section active">
             <div class="card">
                 <h3 style="color: var(--primary-blue); margin-top: 0;">📝 דיווח פעילות חדש</h3>
@@ -206,7 +201,6 @@
             </div>
         </div>
 
-        <!-- תצוגת מנהל -->
         <div id="adminView" class="view-section">
             <div class="card">
                 <h3 style="margin-top: 0;">🔍 סינון נתונים</h3>
@@ -233,7 +227,6 @@
                 </div>
             </div>
 
-            <!-- סיכום שעות -->
             <div class="card" id="adminSummaryCard">
                 <div class="action-row">
                     <h3 style="margin:0">📊 סיכום שעות חודשי</h3>
@@ -257,7 +250,6 @@
                 </div>
             </div>
 
-            <!-- לוג מלא -->
             <div class="card" id="adminLogsCard">
                 <div class="action-row">
                     <h3 style="margin:0">📜 לוג דיווחים מפורט</h3>
@@ -288,74 +280,41 @@
 </div>
 
 <script>
-    // הגדרות מערכת
-    const USERS = { 
-        "1010": "אינאס מיעארי", 
-        "2020": "נדאא טרביה", 
-        "3030": "סונדוס חלאילה", 
-        "4040": "נגם עלי", 
-        "5050": "סוניא רעד" 
-    };
+    const USERS = { "1010": "אינאס מיעארי", "2020": "נדאא טרביה", "3030": "סונדוס חלאילה", "4040": "נגם עלי", "5050": "סוניא רעד" };
     const ADMIN_CODE = "2911##";
     
-    // זיהוי אפליקציה ו-Firebase (ערכי ברירת מחדל אם לא הוזנו)
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'sana-app-v1';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-        apiKey: "", // יש להשאיר ריק, הסביבה תזריק אוטומטית במידת הצורך
-        authDomain: "dummy.firebaseapp.com",
-        projectId: "dummy-project",
-        storageBucket: "dummy.appspot.com",
-        messagingSenderId: "12345",
-        appId: "1:12345:web:12345"
-    };
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'sana-app';
+    const firebaseConfig = JSON.parse(__firebase_config);
     const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     let currentUser = null, isAdmin = false, reports = [], currentAttendees = [], db;
     let currentFilteredReports = [], currentSummaryData = {};
 
     window.onload = function() {
-        // הגדרת תאריך היום כברירת מחדל
         document.getElementById('activityDate').value = new Date().toISOString().split('T')[0];
-        
-        // מילוי רשימת המדריכים בסינון
         const select = document.getElementById('filterGuide');
         Object.values(USERS).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name; opt.innerText = name;
             select.appendChild(opt);
         });
-
-        // הגדרת החודש הנוכחי בסינון
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         document.getElementById('filterMonth').value = currentMonth;
-
         setupFirebase();
     };
 
     async function setupFirebase() {
         try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            
-            // התחברות אנונימית או עם טוקן
-            if (initialToken) {
-                await firebase.auth().signInWithCustomToken(initialToken);
-            } else {
-                await firebase.auth().signInAnonymously();
-            }
-
-            firebase.auth().onAuthStateChanged(user => {
-                if (user) startDataListener();
-            });
-        } catch (e) {
-            console.error("Firebase Setup Error:", e);
-        }
+            if (initialToken) await firebase.auth().signInWithCustomToken(initialToken);
+            else await firebase.auth().signInAnonymously();
+            firebase.auth().onAuthStateChanged(user => { if (user) startDataListener(); });
+        } catch (e) { console.error("Firebase Setup Error:", e); }
     }
 
     function startDataListener() {
-        // האזנה לדיווחים בנתיב הנדרש
+        // שימוש בנתיב מוחלט ומדויק לפי החוקים
         db.collection('artifacts').doc(appId).collection('public').doc('data').collection('reports')
           .onSnapshot(snap => {
             reports = [];
@@ -374,9 +333,7 @@
         } else if (USERS[code]) {
             isAdmin = false; currentUser = USERS[code];
             showApp(); switchView('personal');
-        } else {
-            alert("קוד גישה לא מזוהה. נסה שוב.");
-        }
+        } else { alert("קוד גישה לא מזוהה."); }
     }
 
     function showApp() {
@@ -389,13 +346,11 @@
     function refreshUI() {
         const guideFilter = document.getElementById('filterGuide').value;
         const monthFilter = document.getElementById('filterMonth').value;
-
         currentFilteredReports = reports.filter(r => {
             const matchGuide = (guideFilter === 'all' || r.guide === guideFilter);
             const matchMonth = (monthFilter === 'all' || (r.date && r.date.split('-')[1] === monthFilter));
             return matchGuide && matchMonth;
         });
-
         renderPersonal();
         if (isAdmin) renderAdmin();
     }
@@ -403,17 +358,15 @@
     function renderPersonal() {
         const body = document.getElementById('personalHistoryBody');
         const userReports = reports.filter(r => r.guide === currentUser);
-        
         if (userReports.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">אין דיווחים קודמים להצגה</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;">אין דיווחים</td></tr>';
             return;
         }
-
         body.innerHTML = userReports.map(r => `
             <tr>
                 <td>${r.date ? r.date.split('-').reverse().join('/') : '-'}</td>
                 <td>${r.location || '-'}</td>
-                <td class="desc-cell" title="${r.description}">${r.description || '-'}</td>
+                <td class="desc-cell">${r.description || '-'}</td>
                 <td><span class="badge badge-count" onclick='viewList(${JSON.stringify(r.attendees)})'>👤 ${r.attendeesCount || 0}</span></td>
                 <td><span class="badge badge-hours">${r.duration || 0} ש'</span></td>
             </tr>
@@ -425,35 +378,14 @@
         const logBody = document.getElementById('adminFullLogBody');
         sumBody.innerHTML = ''; logBody.innerHTML = '';
         currentSummaryData = {};
-
         currentFilteredReports.forEach(r => {
             const dur = parseFloat(r.duration) || 0;
-            logBody.innerHTML += `
-                <tr>
-                    <td><b>${r.guide}</b></td>
-                    <td>${r.date ? r.date.split('-').reverse().join('/') : '-'}</td>
-                    <td>${r.location}</td>
-                    <td class="desc-cell">${r.description || '-'}</td>
-                    <td><span class="badge badge-count" onclick='viewList(${JSON.stringify(r.attendees)})'>👤 ${r.attendeesCount}</span></td>
-                    <td>${dur.toFixed(1)}</td>
-                    <td class="no-print-col"><button onclick="deleteReport('${r.id}')" style="background:none; border:none; cursor:pointer;">🗑️</button></td>
-                </tr>
-            `;
+            logBody.innerHTML += `<tr><td><b>${r.guide}</b></td><td>${r.date}</td><td>${r.location}</td><td class="desc-cell">${r.description}</td><td><span class="badge badge-count" onclick='viewList(${JSON.stringify(r.attendees)})'>👤 ${r.attendeesCount}</span></td><td>${dur.toFixed(1)}</td><td class="no-print-col"><button onclick="deleteReport('${r.id}')">🗑️</button></td></tr>`;
             if (!currentSummaryData[r.guide]) currentSummaryData[r.guide] = { h: 0, a: 0 };
             currentSummaryData[r.guide].h += dur; currentSummaryData[r.guide].a += 1;
         });
-
         Object.keys(currentSummaryData).sort().forEach(name => {
-            sumBody.innerHTML += `
-                <tr>
-                    <td>${name}</td>
-                    <td><b>${currentSummaryData[name].h.toFixed(1)}</b></td>
-                    <td>${currentSummaryData[name].a}</td>
-                    <td class="no-print-col">
-                        <button class="btn-small btn-pdf" onclick="exportGuidePDF('${name}')">📄 דוח אישי</button>
-                    </td>
-                </tr>
-            `;
+            sumBody.innerHTML += `<tr><td>${name}</td><td><b>${currentSummaryData[name].h.toFixed(1)}</b></td><td>${currentSummaryData[name].a}</td><td class="no-print-col"><button class="btn-small btn-pdf" onclick="exportGuidePDF('${name}')">📄 דוח</button></td></tr>`;
         });
     }
 
@@ -462,38 +394,22 @@
         const end = document.getElementById('endTime').value;
         const loc = document.getElementById('activityLoc').value;
         const date = document.getElementById('activityDate').value;
-        
-        if(!start || !end || !loc || !date) return alert("יש למלא את כל שדות החובה (מקום, תאריך ושעות).");
-        
+        if(!start || !end || !loc || !date) return alert("נא למלא שדות חובה.");
         const duration = calculateDuration(start, end);
-        if (duration <= 0) return alert("שעת הסיום חייבת להיות אחרי שעת ההתחלה.");
+        if (duration <= 0) return alert("זמן לא תקין.");
 
-        const data = { 
-            guide: currentUser, 
-            location: loc, 
-            date: date, 
-            description: document.getElementById('activityDesc').value, 
-            duration: duration, 
-            attendees: [...currentAttendees], 
-            attendeesCount: currentAttendees.length, 
-            timestamp: firebase.firestore.FieldValue.serverTimestamp() 
-        };
+        const data = { guide: currentUser, location: loc, date: date, description: document.getElementById('activityDesc').value, duration: duration, attendees: [...currentAttendees], attendeesCount: currentAttendees.length, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
         
         try {
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('submitBtn').innerText = "שולח...";
-            
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true; btn.innerText = "שומר...";
             await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('reports').add(data);
-            
-            alert("הדיווח נשמר בהצלחה במערכת!");
-            
-            // איפוס טופס
-            currentAttendees = []; 
-            renderAttendeeTags();
+            alert("הדיווח נשלח בהצלחה!");
+            currentAttendees = []; renderAttendeeTags();
             ['activityLoc', 'startTime', 'endTime', 'activityDesc'].forEach(id => document.getElementById(id).value = '');
         } catch (e) { 
             console.error(e);
-            alert("שגיאה בתקשורת עם השרת."); 
+            alert("שגיאת שליחה: " + e.message); 
         } finally {
             document.getElementById('submitBtn').disabled = false;
             document.getElementById('submitBtn').innerText = "שמור ושדר דיווח";
@@ -504,58 +420,29 @@
         const sP = s.split(':'), eP = e.split(':');
         const start = new Date(0, 0, 0, sP[0], sP[1]);
         const end = new Date(0, 0, 0, eP[0], eP[1]);
-        const diff = (end - start) / 3600000;
-        return diff > 0 ? parseFloat(diff.toFixed(2)) : 0;
+        return Math.max(0, (end - start) / 3600000).toFixed(2);
     }
 
     function addAttendee() {
         const val = document.getElementById('attendeeInput').value.trim();
-        if(val && !currentAttendees.includes(val)) { 
-            currentAttendees.push(val); 
-            renderAttendeeTags(); 
-            document.getElementById('attendeeInput').value = ''; 
-        }
+        if(val && !currentAttendees.includes(val)) { currentAttendees.push(val); renderAttendeeTags(); document.getElementById('attendeeInput').value = ''; }
     }
 
     function renderAttendeeTags() {
-        document.getElementById('attendeeTags').innerHTML = currentAttendees.map(n => `
-            <div style="background:#e2e8f0; padding:6px 12px; border-radius:20px; font-size:0.9rem; display:flex; align-items:center; gap:6px;">
-                ${n} <span onclick="removeAttendee('${n}')" style="cursor:pointer; color:var(--accent-red); font-weight:bold;">×</span>
-            </div>
-        `).join('');
+        document.getElementById('attendeeTags').innerHTML = currentAttendees.map(n => `<div style="background:#e2e8f0; padding:4px 10px; border-radius:15px; font-size:0.8rem;">${n} <span onclick="removeAttendee('${n}')" style="cursor:pointer; color:red;">×</span></div>`).join('');
     }
 
-    function removeAttendee(n) { 
-        currentAttendees = currentAttendees.filter(x => x !== n); 
-        renderAttendeeTags(); 
-    }
+    function removeAttendee(n) { currentAttendees = currentAttendees.filter(x => x !== n); renderAttendeeTags(); }
 
     function viewList(list) {
-        const modalList = document.getElementById('modalList');
-        modalList.innerHTML = list && list.length ? list.map(n => `<li>${n}</li>`).join('') : "<li>לא הוזנו משתתפים בדיווח זה.</li>";
+        document.getElementById('modalList').innerHTML = list && list.length ? list.map(n => `<li>${n}</li>`).join('') : "<li>אין רשימה.</li>";
         document.getElementById('attendanceModal').style.display = 'flex';
     }
 
-    function closeModal() { 
-        document.getElementById('attendanceModal').style.display = 'none'; 
-    }
-
-    async function deleteReport(id) { 
-        if(confirm("האם אתה בטוח שברצונך למחוק לצמיתות דיווח זה?")) {
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('reports').doc(id).delete(); 
-        }
-    }
-
-    function logout() { 
-        location.reload(); 
-    }
-
-    function clearFilters() { 
-        document.getElementById('filterGuide').value = 'all'; 
-        document.getElementById('filterMonth').value = 'all'; 
-        refreshUI(); 
-    }
-
+    function closeModal() { document.getElementById('attendanceModal').style.display = 'none'; }
+    async function deleteReport(id) { if(confirm("למחוק?")) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('reports').doc(id).delete(); }
+    function logout() { location.reload(); }
+    function clearFilters() { document.getElementById('filterGuide').value = 'all'; document.getElementById('filterMonth').value = 'all'; refreshUI(); }
     function switchView(v) {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -563,87 +450,41 @@
         document.getElementById('btn' + v.charAt(0).toUpperCase() + v.slice(1)).classList.add('active');
     }
 
-    // ייצוא CSV
     function exportSummaryToCSV() {
         let csv = "\uFEFFשם המדריך,סה\"כ שעות,פעילויות\n";
-        Object.keys(currentSummaryData).forEach(name => {
-            csv += `${name},${currentSummaryData[name].h.toFixed(1)},${currentSummaryData[name].a}\n`;
-        });
+        Object.keys(currentSummaryData).forEach(name => { csv += `${name},${currentSummaryData[name].h.toFixed(1)},${currentSummaryData[name].a}\n`; });
         downloadFile(csv, "סיכום_SANA.csv");
     }
 
     function exportFilteredToCSV() {
         let csv = "\uFEFFמדריך,תאריך,מקום,תיאור,משתתפים,שעות\n";
-        currentFilteredReports.forEach(r => {
-            csv += `${r.guide},${r.date},${r.location},"${r.description || ''}",${r.attendeesCount},${r.duration}\n`;
-        });
-        downloadFile(csv, "פירוט_דיווחים_SANA.csv");
+        currentFilteredReports.forEach(r => { csv += `${r.guide},${r.date},${r.location},"${r.description}",${r.attendeesCount},${r.duration}\n`; });
+        downloadFile(csv, "פירוט_SANA.csv");
     }
 
     function downloadFile(content, filename) {
         const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
+        link.href = URL.createObjectURL(blob); link.download = filename; link.click();
     }
 
-    // ייצוא PDF
     function exportToPDF(elementId, title) {
         const element = document.getElementById(elementId).cloneNode(true);
-        // הסרת כפתורים מהעותק להדפסה
         element.querySelectorAll('button, .no-print-col').forEach(el => el.remove());
-        
-        const opt = {
-            margin: 10,
-            filename: `${title}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
+        const opt = { margin: 10, filename: `${title}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
         const container = document.createElement('div');
-        container.dir = 'rtl';
-        container.style.fontFamily = 'sans-serif';
-        container.style.padding = '20px';
-        container.innerHTML = `
-            <h2 style="text-align:center; color:#1e40af;">SANA - ${title}</h2>
-            <p style="text-align:center;">תאריך הפקה: ${new Date().toLocaleDateString('he-IL')}</p>
-            <hr>${element.innerHTML}
-        `;
-
+        container.dir = 'rtl'; container.style.padding = '20px';
+        container.innerHTML = `<h2 style="text-align:center;">SANA - ${title}</h2><hr>${element.innerHTML}`;
         html2pdf().set(opt).from(container).save();
     }
 
     function exportGuidePDF(name) {
         const guideReports = currentFilteredReports.filter(r => r.guide === name);
         const month = document.getElementById('filterMonth').options[document.getElementById('filterMonth').selectedIndex].text;
-        
         let total = 0;
-        const tableRows = guideReports.map(r => {
-            total += parseFloat(r.duration);
-            return `<tr>
-                <td style="border:1px solid #ddd; padding:8px;">${r.date.split('-').reverse().join('/')}</td>
-                <td style="border:1px solid #ddd; padding:8px;">${r.location}</td>
-                <td style="border:1px solid #ddd; padding:8px;">${r.description || '-'}</td>
-                <td style="border:1px solid #ddd; padding:8px;">${r.attendeesCount}</td>
-                <td style="border:1px solid #ddd; padding:8px;">${r.duration}</td>
-            </tr>`;
-        }).join('');
-
-        const content = `
-            <div dir="rtl" style="font-family:sans-serif; padding:20px;">
-                <h1 style="color:#1e40af; text-align:center;">דוח פעילות: ${name}</h1>
-                <p style="text-align:center;">תקופה: ${month} | סה"כ שעות: <b>${total.toFixed(1)}</b></p>
-                <table style="width:100%; border-collapse:collapse; margin-top:20px;">
-                    <thead style="background:#f1f5f9;">
-                        <tr><th>תאריך</th><th>מקום</th><th>תיאור</th><th>נוכחים</th><th>שעות</th></tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-            </div>
-        `;
-        html2pdf().set({ margin: 10, filename: `דוח_${name}.pdf` }).from(content).save();
+        const rows = guideReports.map(r => { total += parseFloat(r.duration); return `<tr><td>${r.date}</td><td>${r.location}</td><td>${r.duration}</td></tr>`; }).join('');
+        const content = `<div dir="rtl"><h1>דוח: ${name}</h1><p>חודש: ${month} | סה"כ: ${total.toFixed(1)}</p><table>${rows}</table></div>`;
+        html2pdf().from(content).save();
     }
 </script>
 
